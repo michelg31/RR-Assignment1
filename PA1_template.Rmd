@@ -1,0 +1,148 @@
+---
+title: "Reproductible Research course - Peer Assement 1"
+output: html_document
+---
+Written by michel 31 - Sunday, August 16, 2015
+
+This document is part of the training Course "Reproductible Research" (from Roger D. Peng, Jeff Leek, and Brian Caffo) that can be found on on www.coursera.org. It is the result of the first assignment, aiming to use R markdown langage and knitr package.
+
+</BR>
+
+## PURPOSE OF THE ASSIGNMENT
+The goal aof the study is to analyse data collected from a anonymous personal activity monitoring device that recorded the number of steps taken in 5 minute intervals each day during the months of October and November, 2012.
+
+We look to answer 3 questions :
+
+1. What is mean total number of steps taken per day?
+2. What is the average daily activity pattern?
+3. Are there differences in activity patterns between weekdays and weekends?
+
+
+## ASSIGNMENT 
+
+### From raw data to analytic data 
+#### Raw data
+Raw data are available [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) (Zip format)  
+
+Dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset. The variables included in this dataset are:
+
+- steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- date: The date on which the measurement was taken in YYYY-MM-DD format
+- interval: Identifier for the 5-minute interval in which measurement was taken
+
+Dataset file has been uploaded and put in a directory called "rawdata" and saved under "activity.csv""
+
+
+#### Processing Code
+
+````{r}
+
+## Some variable settings
+dir <- getwd()
+rawDir <- "rawdata"
+filename <- "activity.csv"
+
+## Check directory and file exist
+
+if (!any(dir(dir)==rawDir)) return(message(paste(
+    "Unable to find 'rawdata' directory. Please chek your working directory.\nCurrent directory ->", dir )))
+
+setwd(file.path(dir,"rawdata"))
+if (!any(list.files()==filename)) return(essage(paste(sep="",
+    "Unable to find '",filename,"' in '", rawDir,"'\nPlease check filename")))                                         
+setwd(dir)
+
+## Load Data
+message("Loading data...")
+
+setwd(file.path(dir,"rawdata"))
+rawData <- read.csv(filename, stringsAsFactors=FALSE)
+rawData <- transform(rawData, date = factor(as.Date(date, "%Y-%m-%d")))  # transform date to Date format
+
+```
+
+
+### Question 1 : What is mean total number of steps taken per day?
+
+
+*1.Calculate the total number of steps taken per day*
+```{r}
+stepsTotal <-  tapply(rawData$steps, rawData$date, sum, na.rm=TRUE)
+barplot(stepsTotal, xlab="days", ylab="Steps", main="Total number of steps per day")
+```
+
+
+*2.Make a histogram of the total number of steps taken each day*
+
+```{r}
+hist(stepsTotal, xlab="Number of steps", main ="Histogram of Total number of steps per day")
+```
+
+
+*3.Calculate and report the mean and median of the total number of steps taken per day*
+
+```{r}
+print(paste(c("MEAN of total number of steps taken per day =",round(mean(stepsTotal),0))))
+print(paste(c("MEDIAN of total number of steps taken per day =",round(median(stepsTotal),0))))
+```
+
+### Question 2 : What is the average daily activity pattern?
+
+*1.Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)*
+
+```{r}
+
+library(dplyr)
+dataset <- mutate(rawData, interval = factor(interval), dailySteps = as.integer(stepsTotal[rawData$date]), intervalPct = steps/dailySteps*100 )
+##dataset <- mutate(dataset, intervalPct = steps/dailySteps*100)
+
+## >intervalPct <- tapply(dataset$intervalPct, dataset$interval,mean, na.rm=TRUE)
+temp <- tapply(dataset$intervalPct, dataset$interval,mean, na.rm=TRUE)
+intervalPct <- cbind(as.integer(names(temp)), as.numeric(temp))
+
+plot(intervalPct, type="l", xlab="interval number", ylab="% of daily steps", main = "Average percentage of average number of steps taken per intervals")
+```
+
+*2.Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?*
+
+```{r}
+maxi <- intervalPct[intervalPct[,2]==max(intervalPct[,2]),1]
+print(paste(sep="", "The 5-minute interval where steps are on average most taken is interval number ", maxi,"."))
+
+```
+
+
+### Question 3 : Are there differences in activity patterns between weekdays and weekends?
+
+*1.Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.*
+
+```{r}
+langage <- Sys.getlocale("LC_TIME")
+    Sys.setlocale("LC_TIME", "C")
+    dataset <- mutate(dataset, weekdays=weekdays(as.Date(date))) 
+    dataset <- mutate(dataset, weekTime=factor((weekdays=="Sunday" | weekdays == "Saturday"), labels = c("weekday", "weekend")))
+    Sys.setlocale("LC_TIME", langage)
+``` 
+
+*2.Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.*
+
+
+
+```{r}
+
+dataweek <- dataset[dataset$weekTime=="weekday",]
+dataweekend <- dataset[dataset$weekTime=="weekend",]
+
+temp <- tapply(dataweek$intervalPct, dataweek$interval,mean, na.rm=TRUE)
+intervalPct_weekday <- cbind(as.integer(names(temp)), as.numeric(temp))
+plot(intervalPct_weekday, type="l", xlab="interval number", ylab="% of daily steps", main = "Average percentage of average number of steps taken per intervals \n(blue = weekday)", col="blue")
+
+temp <- tapply(dataweekend$intervalPct, dataweekend$interval,mean, na.rm=TRUE)
+intervalPct_weekend <- cbind(as.integer(names(temp)), as.numeric(temp))
+plot(intervalPct_weekday, type="l", xlab="interval number", ylab="% of daily steps", main = "Average percentage of average number of steps taken per intervals \n(orange = weekend)", col="orange")
+```
+
+**We observe that there is different patterns depending on weekday or weekends**
+
+
+
